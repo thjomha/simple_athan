@@ -140,5 +140,5 @@ if __name__ == "__main__":
                 print(f"Current prayer time: {current_prayer_time} ({current_prayer_name}), but mp3 is not set to play.")
         else:
             print("No current prayer time found.")
-        time.sleep(1)
+        time.sleep(45)
         
