@@ -113,7 +113,7 @@ if __name__ == "__main__":
         play_status, audio_file = prayers_to_play[prayer_name]
         play_status_str = "Yes" if play_status else "No"
         # Find the current prayer time (less than 1 minute past)
-        if play_status and abs(total_seconds) <= 9000:
+        if play_status and abs(total_seconds) <= 60:
             current_prayer_time = (prayer_name, audio_file)
         print(f"{prayer_name:<10} | {prayer_time_str:<8} | {total_seconds:>5} seconds | Play: {play_status_str:<3} | Audio: {audio_file}")
     
