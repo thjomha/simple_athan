@@ -154,5 +154,6 @@ if __name__ == "__main__":
             print(f"Current prayer time: {current_prayer_time} ({current_prayer_name}), but mp3 is not set to play.")
     else:
         print("No current prayer time found.")
-    time.sleep(1)
-        
+    # Log the completion of the program
+    with open('log.txt', 'a') as log_file:
+        log_file.write(f"Program finished running at {datetime.now()}\n")
