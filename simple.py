@@ -1,0 +1,138 @@
+import subprocess
+import sqlite3
+import os
+from datetime import datetime
+import pygame
+import time
+import psutil
+
+def get_prayer_times_by_date(db_path, current_date):
+    # Connect to the SQLite database
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    # Extract month and day from the current date
+    month = current_date.month
+    day = current_date.day
+    
+    # Execute the query to fetch the record based on month and day
+    cursor.execute("SELECT * FROM times WHERE month = ? AND day = ?", (month, day))
+    
+    # Fetch the result
+    record = cursor.fetchone()
+    
+    # Display the record
+    if record:
+        return record;
+    else:
+        print("No record found for the given date.")
+    
+    # Close the connection
+    conn.close()
+
+
+
+
+def get_column_description(db_path, column_number):
+    # Connect to the SQLite database
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    # Execute the query to fetch the description and prayer status based on column number
+    cursor.execute("SELECT description, prayer FROM column_legend WHERE column = ?", (column_number,))
+    
+    # Fetch the result
+    result = cursor.fetchone()
+    
+    # Close the connection
+    conn.close()
+    
+    # Return the description and prayer status if found, otherwise return None and False
+    if result:
+        description, prayer_status = result
+        return description, bool(prayer_status)
+    else:
+        return None, False
+
+if __name__ == "__main__":
+    # Check if the script is already running
+    script_name = os.path.basename(__file__)
+    for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+        if proc.info['name'] == 'python' or proc.info['name'] == 'python3':
+            if len(proc.info['cmdline']) > 1 and script_name in proc.info['cmdline'][1]:
+                if proc.info['pid'] != os.getpid():
+                    print("Script is already running. Exiting.")
+                    exit()
+    db_path = os.path.join(os.path.dirname(__file__), 'prayertimes.sqlite')
+    # Ask the user which prayers to play the mp3 file for
+    prayers_to_play = {}
+
+    # Connect to the SQLite database
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    # Execute the query to fetch the prayer names and their announce status
+    cursor.execute("SELECT prayer, announce, audio FROM column_legend")
+    
+    # Fetch all the results
+    records = cursor.fetchall()
+    
+    # Update the prayers_to_play dictionary based on the announce status
+    for record in records:
+        prayer, announce, audio = record
+        prayers_to_play[prayer] = (bool(announce), audio)
+    
+    # Close the connection
+    conn.close()
+    
+
+
+    
+    # Get the current date and time       
+    current_date = datetime.now()
+    prayer_times = get_prayer_times_by_date(db_path, current_date)
+
+    # Extract the prayer time from the record (assuming it's in the 2nd to 7th positions)
+    prayer_times_list = prayer_times[2:8]
+    
+    # Get the current time
+    current_time = current_date.time()
+    current_prayer_time = None
+    # Calculate the difference between current time and each prayer time
+    time_differences = []
+    for prayer_time_str in prayer_times_list:
+        prayer_time = datetime.strptime(prayer_time_str, '%I:%M %p').time()
+        difference = datetime.combine(current_date, prayer_time) - datetime.combine(current_date, current_time)
+        time_differences.append(difference)
+    # Display the prayers for the day with time differences to the nearest second
+    for prayer_name, prayer_time_str, time_diff in zip(prayers_to_play.keys(), prayer_times_list, time_differences):
+        # Convert time difference to total seconds
+        total_seconds = int(time_diff.total_seconds())
+        # Calculate hours, minutes, and seconds
+        hours, remainder = divmod(total_seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        play_status, audio_file = prayers_to_play[prayer_name]
+        play_status_str = "Yes" if play_status else "No"
+        # Find the current prayer time (less than 1 minute past)
+        if play_status and abs(total_seconds) <= 60:
+            current_prayer_time = (prayer_name, audio_file)
+        print(f"{prayer_name:<10} | {prayer_time_str:<8} | {total_seconds:>5} seconds | Play: {play_status_str:<3} | Audio: {audio_file}")
+    
+    if current_prayer_time:
+        current_prayer_audio = current_prayer_time[1]
+        current_prayer_name  = current_prayer_time[0]
+        if prayers_to_play[current_prayer_name]:
+            print(f"Current prayer time: {current_prayer_name} ({current_prayer_audio})")
+            # Define the absolute file path
+            file_path = os.path.expanduser("~/Documents/simple_athan/")
+
+            # Run omxplayer with the full file path
+            subprocess.run(["omxplayer", file_path + current_prayer_audio])
+
+        else:
+            print(f"Current prayer time: {current_prayer_time} ({current_prayer_name}), but mp3 is not set to play.")
+    else:
+        print("No current prayer time found.")
+    # Log the completion of the program
+    with open('log.txt', 'a') as log_file:
+        log_file.write(f"Program finished running at {datetime.now()}\n")
