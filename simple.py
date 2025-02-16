@@ -127,7 +127,9 @@ if __name__ == "__main__":
             file_path = os.path.expanduser("~/Documents/simple_athan/")
 
             # Run omxplayer with the full file path
-            subprocess.run(["omxplayer", file_path + current_prayer_audio])
+            #subprocess.run(["omxplayer", file_path + current_prayer_audio])
+            subprocess.run(["omxplayer", "--no-keys", "--no-osd", file_path + current_prayer_audio])
+
 
         else:
             print(f"Current prayer time: {current_prayer_time} ({current_prayer_name}), but mp3 is not set to play.")
